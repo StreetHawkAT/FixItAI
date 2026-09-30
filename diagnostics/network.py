@@ -40,8 +40,13 @@ def check_network():
     if pnp_errors and len(pnp_errors) > 5:
         driver_status = "error"
 
+    status = "healthy" if (wifi_present and wifi_enabled and internet_connected) else "problem"
+    if driver_status == "error":
+        status = "problem"
+
     return {
         "category": "network",
+        "status": status,
         "internet_connected": internet_connected,
         "wifi_present": wifi_present,
         "wifi_enabled": wifi_enabled,

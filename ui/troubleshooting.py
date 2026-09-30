@@ -1,7 +1,6 @@
 import streamlit as st
 import time
-from core.repair_engine import RepairEngine
-from diagnostics.network import check_network
+from core.repair_engine import RepairEngine, RepairState
 from core.ai_engine import LocalAIEngine
 from ui.components import ai_analysis_card
 
@@ -95,30 +94,31 @@ def render_troubleshooting():
         st.error(f"Unknown repair ID recommended by AI: {repair_id}. Falling back to safe state.")
         return
         
-    st.markdown("<br><h4 style='color: #a1a1aa;'>RECOMMENDED FIX</h4>", unsafe_allow_html=True)
-    st.markdown(f"""
-        <div class="repair-box">
-            <div style="font-size: 1.2rem; font-weight: 600; margin-bottom: 5px;">{repair_info['name']}</div>
-            <div style="margin-bottom: 10px; color: #d1d5db;">{ai_result.get("repair_reason", repair_info['description'])}</div>
-            <div style="margin-bottom: 15px;">
-                <span style="background: #374151; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 600;">Risk: {repair_info['risk'].upper()}</span>
+    if not st.session_state.get('verifying_repair'):
+        st.markdown("<br><h4 style='color: #a1a1aa;'>RECOMMENDED FIX</h4>", unsafe_allow_html=True)
+        st.markdown(f"""
+            <div class="repair-box">
+                <div style="font-size: 1.2rem; font-weight: 600; margin-bottom: 5px;">{repair_info['name']}</div>
+                <div style="margin-bottom: 10px; color: #d1d5db;">{ai_result.get("repair_reason", repair_info['description'])}</div>
+                <div style="margin-bottom: 15px;">
+                    <span style="background: #374151; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 600;">Risk: {repair_info['risk'].upper()}</span>
+                </div>
+                <div style="color: #9ca3af; font-size: 0.9rem;">
+                    <strong>Why this is safe:</strong> This only executes pre-approved scripts and does not remove your drivers or delete any personal data.
+                </div>
             </div>
-            <div style="color: #9ca3af; font-size: 0.9rem;">
-                <strong>Why this is safe:</strong> This only executes pre-approved scripts and does not remove your drivers or delete any personal data.
-            </div>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("<br>", unsafe_allow_html=True)
-    col1, col2 = st.columns([1, 1])
-    with col1:
-        if st.button("FIX THIS PROBLEM", type="primary", use_container_width=True):
-            st.session_state['verifying_repair'] = True
-            st.session_state['active_repair'] = repair_id
-            st.rerun()
-            
-    with st.expander("View technical details"):
-        st.json(diag)
+        """, unsafe_allow_html=True)
+        
+        st.markdown("<br>", unsafe_allow_html=True)
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            if st.button("RUN REPAIR", type="primary", use_container_width=True):
+                st.session_state['verifying_repair'] = True
+                st.session_state['active_repair'] = repair_id
+                st.rerun()
+                
+        with st.expander("View technical details"):
+            st.json(diag)
             
     if st.session_state.get('verifying_repair'):
         st.markdown("---")
@@ -133,25 +133,7 @@ def render_troubleshooting():
         if is_demo:
             ph.markdown("✓ Diagnosing device<br>✓ Applying repair<br>○ Verifying result", unsafe_allow_html=True)
             time.sleep(1)
-            success = True
-            msg = "Demo Execution Success"
-        else:
-            success, msg = engine.execute_repair(active_id)
-            ph.markdown("✓ Diagnosing device<br>✓ Applying repair<br>○ Verifying result", unsafe_allow_html=True)
             
-        time.sleep(1)
-        
-        if not success:
-            st.markdown(f"""
-                <div style="background: #2a2a2a; border-left: 4px solid #ef4444; padding: 20px; border-radius: 8px; margin-top: 15px;">
-                    <div style="color: #ef4444; font-weight: 600; letter-spacing: 1px; margin-bottom: 10px;">⚠ REPAIR FAILED</div>
-                    <div style="font-size: 1.1rem;">{msg}</div>
-                </div>
-            """, unsafe_allow_html=True)
-            st.session_state['verifying_repair'] = False
-            return
-            
-        if is_demo:
             ph.markdown("✓ Diagnosing device<br>✓ Applying repair<br>✓ Verifying result", unsafe_allow_html=True)
             st.markdown(f"""
                 <div style="background: #2a2a2a; border-left: 4px solid #10b981; padding: 20px; border-radius: 8px; margin-top: 15px;">
@@ -159,23 +141,76 @@ def render_troubleshooting():
                     <div style="font-size: 1.1rem;">Problem has been resolved. (Demo)</div>
                 </div>
             """, unsafe_allow_html=True)
-        else:
-            is_fixed = engine.verify_repair(active_id)
-            if is_fixed:
-                ph.markdown("✓ Diagnosing device<br>✓ Applying repair<br>✓ Verifying result", unsafe_allow_html=True)
-                st.markdown(f"""
-                    <div style="background: #2a2a2a; border-left: 4px solid #10b981; padding: 20px; border-radius: 8px; margin-top: 15px;">
-                        <div style="color: #10b981; font-weight: 600; letter-spacing: 1px; margin-bottom: 10px;">✓ PROBLEM RESOLVED</div>
-                        <div style="font-size: 1.1rem;">Problem has been successfully resolved.</div>
-                    </div>
-                """, unsafe_allow_html=True)
-            else:
-                ph.markdown("✓ Diagnosing device<br>✓ Applying repair<br>⚠ Verifying result", unsafe_allow_html=True)
-                st.markdown(f"""
-                    <div style="background: #2a2a2a; border-left: 4px solid #ef4444; padding: 20px; border-radius: 8px; margin-top: 15px;">
-                        <div style="color: #ef4444; font-weight: 600; letter-spacing: 1px; margin-bottom: 10px;">⚠ REPAIR FAILED</div>
-                        <div style="font-size: 1.1rem;">Issue still persists after repair verification. VERIFICATION INCONCLUSIVE.</div>
-                    </div>
-                """, unsafe_allow_html=True)
+            if st.button("Done", key="demo_done"):
+                st.session_state['verifying_repair'] = False
+                st.rerun()
+            return
             
-        st.session_state['verifying_repair'] = False
+        result = engine.execute_repair(active_id, diagnostic_id=diag.get("id", "unknown"))
+        
+        if result["state"] == RepairState.REQUIRES_ADMIN:
+            st.markdown(f"""
+                <div style="background: #2a2a2a; border-left: 4px solid #f59e0b; padding: 20px; border-radius: 8px; margin-top: 15px;">
+                    <div style="color: #f59e0b; font-weight: 600; letter-spacing: 1px; margin-bottom: 10px;">⚠ ELEVATION REQUIRED</div>
+                    <div style="font-size: 1.1rem;">{result['msg']}</div>
+                    <div style="color: #a1a1aa; margin-top: 10px;">Please restart FixIt AI as Administrator.</div>
+                </div>
+            """, unsafe_allow_html=True)
+            if st.button("Cancel"):
+                st.session_state['verifying_repair'] = False
+                st.rerun()
+            return
+
+        if result["state"] == RepairState.FAILED:
+            ph.markdown("✓ Diagnosing device<br>⚠ Applying repair<br>○ Verifying result", unsafe_allow_html=True)
+            details = result.get('details', {})
+            err_msg = details.get('stderr', '') or details.get('exception', '')
+            st.markdown(f"""
+                <div style="background: #2a2a2a; border-left: 4px solid #ef4444; padding: 20px; border-radius: 8px; margin-top: 15px;">
+                    <div style="color: #ef4444; font-weight: 600; letter-spacing: 1px; margin-bottom: 10px;">⚠ REPAIR EXECUTION FAILED</div>
+                    <div style="font-size: 1.1rem;">{result['msg']}</div>
+                    <div style="color: #a1a1aa; font-family: monospace; margin-top: 10px;">{err_msg}</div>
+                </div>
+            """, unsafe_allow_html=True)
+            if st.button("Done", key="fail_done"):
+                st.session_state['verifying_repair'] = False
+                st.rerun()
+            return
+            
+        ph.markdown("✓ Diagnosing device<br>✓ Applying repair<br>○ Verifying result", unsafe_allow_html=True)
+        time.sleep(1)
+        
+        verify_state = engine.verify_repair(active_id)
+        if verify_state == RepairState.VERIFIED_FIXED:
+            ph.markdown("✓ Diagnosing device<br>✓ Applying repair<br>✓ Verifying result", unsafe_allow_html=True)
+            st.markdown(f"""
+                <div style="background: #2a2a2a; border-left: 4px solid #10b981; padding: 20px; border-radius: 8px; margin-top: 15px;">
+                    <div style="color: #10b981; font-weight: 600; letter-spacing: 1px; margin-bottom: 10px;">✓ REPAIR VERIFIED</div>
+                    <div style="font-size: 1.1rem;">Repair executed and system functionality is verified as working.</div>
+                </div>
+            """, unsafe_allow_html=True)
+        elif verify_state == RepairState.EXECUTED_NOT_FIXED:
+            ph.markdown("✓ Diagnosing device<br>✓ Applying repair<br>⚠ Verifying result", unsafe_allow_html=True)
+            st.markdown(f"""
+                <div style="background: #2a2a2a; border-left: 4px solid #f59e0b; padding: 20px; border-radius: 8px; margin-top: 15px;">
+                    <div style="color: #f59e0b; font-weight: 600; letter-spacing: 1px; margin-bottom: 10px;">⚠ REPAIR EXECUTED, BUT NOT FIXED</div>
+                    <div style="font-size: 1.1rem;">The repair command completed successfully, but the original problem remains.</div>
+                    <div style="color: #a1a1aa; margin-top: 10px;">This may indicate a hardware issue or require advanced troubleshooting.</div>
+                </div>
+            """, unsafe_allow_html=True)
+        else:
+            ph.markdown("✓ Diagnosing device<br>✓ Applying repair<br>⚠ Verification error", unsafe_allow_html=True)
+            st.markdown(f"""
+                <div style="background: #2a2a2a; border-left: 4px solid #ef4444; padding: 20px; border-radius: 8px; margin-top: 15px;">
+                    <div style="color: #ef4444; font-weight: 600; letter-spacing: 1px; margin-bottom: 10px;">⚠ VERIFICATION FAILED</div>
+                    <div style="font-size: 1.1rem;">The repair command completed successfully, but the verification process itself encountered an error.</div>
+                    <div style="color: #a1a1aa; margin-top: 10px;">The system's actual status is unknown.</div>
+                </div>
+            """, unsafe_allow_html=True)
+            
+        with st.expander("View execution details"):
+            st.json(result.get("details", {}))
+            
+        if st.button("Done", key="finish_done"):
+            st.session_state['verifying_repair'] = False
+            st.rerun()

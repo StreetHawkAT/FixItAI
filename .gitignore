@@ -55,3 +55,4 @@ models/downloads/
 
 # Ollama/local model artifacts if stored inside project
 ollama/
+repair_log.jsonl

@@ -80,7 +80,10 @@ The **Execution** is completely sandboxed. The currently implemented safe repair
 - `restart_spooler` (Restart Print Spooler)
 - `restart_wuauserv` (Restart Windows Update service)
 
-**Verification:** Simply executing a repair does not mean the system is fixed. The application forces a secondary validation check by re-running the original hardware diagnostic. 
+**Verification:** Simply executing a repair does not mean the system is fixed. The application executes a targeted verification test (e.g., sending an ICMP ping to `8.8.8.8` after an IP renewal). Based on the precise execution state, the application categorizes the repair into:
+- `VERIFIED_FIXED`: Execution succeeded, verification test succeeded.
+- `EXECUTED_NOT_FIXED`: Execution succeeded, but the core issue remains (e.g. underlying hardware fault).
+- `VERIFICATION_FAILED`: Execution succeeded, but the validation step itself encountered an error.
 
 ---
 
@@ -135,11 +138,11 @@ The application features a modern, premium UI organized into the following areas
 
 The repository contains a robust testing suite leveraging `unittest.mock` to simulate PowerShell outputs, preventing accidental modifications to your host machine during tests.
 
-Currently, **29 tests** pass successfully, covering:
+Currently, **40 tests** pass successfully, covering:
 - All 16 hardware diagnostic parsers
 - RuleBased engine fallbacks
 - Integration schemas and state clearing
-- The isolated repair engine registry
+- The isolated repair engine registry and PS5/PS7 boolean verification compatibility
 
 To run the test suite:
 ```powershell
