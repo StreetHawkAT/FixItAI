@@ -1,4 +1,12 @@
-# FixIt AI 🛠️
+<p align="center">
+  <img src="assets/fixit-ai-logo.png" alt="FixIt AI Logo" width="300">
+</p>
+
+<h1 align="center">FixIt AI 🛠️</h1>
+
+<p align="center">
+  <strong>Your Laptop's Offline AI Technician</strong>
+</p>
 
 > **"What if your laptop could troubleshoot itself?"**  
 > When a laptop breaks, the first thing we usually do is search online. But what if the problem is the internet itself? **FixIt AI** acts as your local, **offline-first** technician. It gathers native Windows telemetry, uses local reasoning to diagnose the root cause, offers predefined safe repairs, and automatically verifies if the fix worked.
