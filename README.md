@@ -7,7 +7,7 @@
 
 ## 🎯 Project Overview
 
-FixIt AI is an **offline-first**, AI-powered Windows desktop troubleshooting and recovery assistant. It operates entirely locally, requiring zero internet access to diagnose hardware and software failures. 
+FixIt AI is an **offline-first**, AI-powered Windows desktop troubleshooting and recovery assistant. Its core diagnostic and reasoning workflow is designed to operate locally, without requiring an internet connection during diagnosis. 
 
 Instead of treating the AI as an uncontrolled command line prompt, FixIt AI enforces a strict safety boundary:
 
