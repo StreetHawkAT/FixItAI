@@ -1,96 +1,124 @@
 # FixIt AI 🛠️
 
-**FixIt AI** is an offline-first, AI-powered Windows desktop troubleshooting and recovery assistant. Built as a submission for the **Snapdragon® AI Lab Build & Present Challenge**, FixIt AI acts as your personal laptop technician that works perfectly **even when your internet is completely disconnected.**
+> **"What if your laptop could troubleshoot itself?"**
+> When a laptop breaks, the first thing we usually do is search online. But what if the problem is the internet itself? FixIt AI acts as your local, offline technician. It gathers native Windows telemetry, uses local reasoning to diagnose the root cause, offers predefined safe repairs, and automatically verifies if the fix worked.
 
-## 🎯 The Problem & Innovation
+---
 
-When a laptop's Wi-Fi breaks, or a critical driver crashes, users are left stranded. They cannot Google the solution or ask cloud-based AI for help because their device has no internet access. 
+## 🎯 Project Overview
 
-**FixIt AI solves this by running entirely locally on Snapdragon-powered PCs.** 
-By leveraging the power of local AI models (via Qualcomm AI Hub / ONNX / Ollama) and native Windows hardware telemetry, FixIt AI can:
-1. **Diagnose** hardware and software failures instantly.
-2. **Explain** the problem in simple, human-readable language using a local LLM.
-3. **Repair** the issue securely using pre-approved, safe PowerShell actions.
-4. **Verify** that the fix actually worked.
+FixIt AI is an **offline-first**, AI-powered Windows desktop troubleshooting and recovery assistant. It operates entirely locally, requiring zero internet access to diagnose hardware and software failures. 
 
-## 🏆 Snapdragon AI Lab Challenge Alignment
+Instead of treating the AI as an uncontrolled command line prompt, FixIt AI enforces a strict safety boundary:
+1. **Diagnosis:** Gathers structured evidence via native Windows queries.
+2. **Reasoning:** A local AI (or deterministic rule-based fallback) analyzes the JSON evidence.
+3. **Resolution:** The AI selects a strictly allowlisted `repair_id`.
+4. **Execution:** The isolated Repair Engine executes predefined, safe PowerShell commands.
+5. **Verification:** The system runs a fresh diagnostic to prove the problem is actually resolved.
 
-This project is specifically designed to leverage the capabilities of **Snapdragon-powered HP PCs**:
+## 🏆 Snapdragon AI Lab Challenge
 
-- **Technical Implementation:** Combines 16 distinct native Windows PnP/WMI hardware diagnostic modules with a robust Local AI reasoning engine. The AI output is strictly schema-bound, ensuring it never hallucinates unsafe executable code.
-- **Application Use Case:** An essential utility for every PC user. The concept of an "offline AI recovery assistant" perfectly demonstrates the unique value of powerful on-device NPU inference.
-- **Deployment & Accessibility:** Features a premium, accessible UI built in Streamlit. It runs seamlessly on Windows on ARM without requiring cloud API keys or subscriptions.
+This project was built for the **Snapdragon® AI Lab Build & Present Challenge**.
 
-## ⚙️ Core Capabilities
+**Current Architecture & Status:**
+- **Development/Test Platform:** Currently implemented and rigorously tested on x64 Intel Windows architectures. 
+- **Snapdragon Target:** The architecture was explicitly designed to support Windows on ARM / Snapdragon X Elite PCs.
+- **NPU Acceleration:** The AI engine (`core/ai_engine.py`) currently relies on Ollama (`phi3`/`llama3`) via a local HTTP endpoint, with a deterministic Rule-Based Fallback. Stubs for `ONNXBackend` and `QNNBackend` are structurally integrated into the AI router, serving as the intended future deployment path to execute models directly on the Qualcomm Hexagon NPU.
 
-FixIt AI features **16 fully implemented diagnostic modules**, capturing structured telemetry across the entire system:
+## 🔍 Diagnostic Categories & Features
 
-| Subsystem | Real Diagnostics | AI Reasoning | Safe Automated Repair |
-|-----------|------------------|--------------|-----------------------|
-| 🌐 Network | ✅ | ✅ | ✅ (Enable Wi-Fi, Reset DHCP, Flush DNS) |
-| 🔊 Audio | ✅ | ✅ | ✅ (Restart AudioSrv) |
-| ᛒ Bluetooth | ✅ | ✅ | ✅ (Restart bthserv) |
-| 📷 Camera | ✅ | ✅ | ✅ (Enable PnP Device) |
-| 🖨️ Printer | ✅ | ✅ | ✅ (Restart Spooler) |
-| 🪟 Windows | ✅ | ✅ | ✅ (Restart Update Service) |
-| 🖥️ Display | ✅ | ✅ | ❌ (Diagnosis Only) |
-| ⌨️ Keyboard | ✅ | ✅ | ❌ (Diagnosis Only) |
-| 🔋 Battery | ✅ | ✅ | ❌ (Diagnosis Only) |
-| 💾 Storage | ✅ | ✅ | ❌ (Diagnosis Only) |
+FixIt AI features **16 fully implemented** native Windows diagnostic modules. The system never relies on "fake" telemetry. When a diagnostic cannot reliably execute or find data, it explicitly returns `UNKNOWN` or `DIAGNOSTIC UNAVAILABLE` rather than falsely reporting "System Healthy".
 
-*(Includes comprehensive modules for Performance, Crash Logs, Microphone, Mouse/Touchpad, USB, and General Drivers).*
+| Category | Windows Telemetry Checked | Automated Repair Available? |
+|----------|---------------------------|-----------------------------|
+| **Network** | Wi-Fi/Ethernet PnP, DHCP, IP config, WLAN service | **YES** (`enable_wifi`, `restart_wlan`, `ip_renew`, `flush_dns`) |
+| **Audio** | AudioSrv, AudioEndpointBuilder, Media PnP devices | **YES** (`restart_audio`) |
+| **Bluetooth** | bthserv, Bluetooth Support Service, PnP devices | **YES** (`restart_bluetooth`) |
+| **Display** | GPU drivers, Monitor presence | *Diagnosis Only* |
+| **Keyboard** | HID/PnP status, Device errors | *Diagnosis Only* |
+| **Mouse/Touchpad** | HID/PnP status, Device errors | *Diagnosis Only* |
+| **Camera** | Image/Camera PnP status, Disabled states | **YES** (`enable_camera`) |
+| **Microphone** | AudioSrv, Media input PnP | *Diagnosis Only* |
+| **USB** | USB controllers, Code 10/43 device errors | *Diagnosis Only* |
+| **Printer** | Print Spooler service, Installed printer queues | **YES** (`restart_spooler`) |
+| **Battery** | Win32_Battery (Charge %, AC State, Critical capacity) | *Diagnosis Only* |
+| **Storage** | Fixed logical drives, Critical <5% free space limits | *Diagnosis Only* |
+| **Performance** | CPU LoadPercentage, FreePhysicalMemory | *Diagnosis Only* |
+| **Drivers** | Scans all Device Manager classes for active errors | *Diagnosis Only* |
+| **Windows** | wuauserv, Recent System Event Log critical errors | **YES** (`restart_wuauserv`) |
+| **Crash** | Kernel-Power, BugChecks, Unexpected Shutdowns | *Diagnosis Only* |
 
-## 🏗️ Architecture
+## 🛡️ Allowlisted Repair Engine
 
-```text
-USER INTERFACE
-  ↓ (User clicks "Check Camera")
-NATIVE WINDOWS DIAGNOSTIC (PowerShell / WMI / PnP)
-  ↓ (Generates structured hardware evidence)
-AI ENGINE (Local LLM / Rule-Based Fallback / QNN)
-  ↓ (Validates strictly formatted JSON schema)
-REPAIR REGISTRY 
-  ↓ (Maps AI decision to predefined safe lambda function)
-WINDOWS EXECUTION & RE-VERIFICATION
-```
+The AI model is completely sandboxed. It **cannot** generate arbitrary PowerShell scripts or commands. It is restricted to outputting a predefined string mapped to an allowlisted repair ID. The currently implemented safe repairs are:
 
-## 🚀 Getting Started
+- `enable_wifi` (Enable NetAdapter)
+- `restart_wlan` (Restart WlanSvc)
+- `ip_renew` (Release/Renew DHCP)
+- `flush_dns` (Flush DNS cache)
+- `enable_camera` (Enable PnP Device)
+- `restart_audio` (Restart AudioSrv)
+- `restart_bluetooth` (Restart bthserv)
+- `restart_spooler` (Restart Print Spooler)
+- `restart_wuauserv` (Restart Windows Update service)
 
-### Prerequisites
-- Windows 11 (Optimized for Snapdragon Windows on ARM devices)
-- Python 3.10+
-- (Optional) Ollama installed locally with `phi3` or `llama3` for full LLM inference.
+*Verification:* Simply executing a repair does not mean the system is fixed. The application forces a secondary validation check by re-running the original hardware diagnostic. 
 
-### Installation
+## 💻 User Interface (Streamlit)
 
-1. Clone the repository and set up your virtual environment:
-```powershell
-python -m venv venv
-.\venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-```
+The application features a modern, premium UI organized into the following areas:
+- **Overview:** General system health, OS architecture, and AI backend status.
+- **Diagnose ("What's Wrong?"):** A 16-category grid to trigger specific subsystem diagnostics, plus a "Full Laptop Diagnosis" button that executes every module asynchronously.
+- **Troubleshoot:** The analysis screen rendering the AI's explanation, evidence lists, and safe repair buttons.
+- **Offline Demo Mode:** A dropdown menu available on the Diagnose page. It allows judges/users to inject simulated hardware failure JSON (e.g., *Camera disabled*, *Print Spooler stopped*) to safely test the AI reasoning and UI flow without actually breaking their physical laptop.
 
-2. Launch the Application:
-```powershell
-python -m streamlit run app.py
-```
+## 🏗️ Technical Stack
 
-### 🧪 Offline Demo Mode
-Don't want to actually break your laptop to test the AI? FixIt AI includes a built-in **Offline Demo Mode**. 
-Navigate to the "Diagnose" tab, expand the Demo Mode section at the bottom, and instantly inject simulated hardware failures (e.g., *Camera Driver Error*, *Wi-Fi Disabled*) to watch the AI pipeline analyze and resolve the issue in real-time.
+- **UI:** Streamlit, custom CSS injects
+- **Hardware Telemetry:** `psutil`, `wmi`, `pywin32`, native Windows PowerShell subprocesses (`Get-PnpDevice`, `Get-Service`, etc.)
+- **AI Backend:** `urllib` (zero heavy API dependencies), Python standard `json`
+- **Testing:** `pytest` (29 comprehensive unit & integration tests)
 
-## 🛡️ Safety First
+## 🚀 Installation & Usage
 
-FixIt AI operates under a strict security boundary:
-- **No Arbitrary Code:** The LLM does *not* generate PowerShell scripts. It only outputs a predefined `repair_id` string.
-- **Controlled Execution:** The `RepairEngine` maps that string to hardcoded, rigorously tested PowerShell commands.
-- **Privacy:** Diagnostics never leave the device. No cloud telemetry is collected.
+1. **Clone the repository:**
+   ```powershell
+   git clone https://github.com/StreetHawkAT/FixItAI.git
+   cd FixItAI
+   ```
 
-## 🤝 Testing
-The project includes a comprehensive test suite covering all 16 hardware diagnostic modules and the AI routing engine.
+2. **Create and activate a virtual environment:**
+   ```powershell
+   python -m venv venv
+   .\venv\Scripts\Activate.ps1
+   ```
+
+3. **Install dependencies:**
+   ```powershell
+   pip install -r requirements.txt
+   ```
+
+4. **Run the application:**
+   ```powershell
+   python -m streamlit run app.py
+   ```
+
+*(Optional: FixIt AI will seamlessly fall back to a deterministic rule-based engine if an AI backend is not detected. If you wish to use the local LLM, download [Ollama](https://ollama.com/), start it on `localhost:11434`, and pull the `phi3` model).*
+
+## 🧪 Testing
+
+The repository contains a robust testing suite leveraging `unittest.mock` to simulate PowerShell outputs, preventing accidental modifications to your host machine during tests.
+
+Currently, **29 tests** pass successfully, covering:
+- All 16 hardware diagnostic parsers
+- RuleBased engine fallbacks
+- Integration schemas and state clearing
+- The isolated repair engine registry
+
+To verify:
 ```powershell
 python -m pytest tests\
 ```
 
 ---
-*Built for the Snapdragon® AI Lab Build & Present Challenge.*
+*Developed as an offline-first solution for native Windows reliability.*
