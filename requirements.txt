@@ -1,0 +1,16 @@
+# Core Framework
+streamlit>=1.41.0,<2.0.0
+python-dotenv>=1.0.1
+
+# HTML Parsing (for battery report analysis)
+beautifulsoup4>=4.12.0
+lxml>=5.0.0
+
+# System Diagnostics
+psutil>=6.1.0
+wmi==1.5.1; sys_platform == "win32"
+pywin32>=311; sys_platform == "win32"
+
+# Utilities
+regex>=2024.11.6
+tqdm>=4.67.0
