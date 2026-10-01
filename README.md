@@ -88,7 +88,7 @@ The **Execution** is completely sandboxed. The currently implemented safe repair
 - `restart_spooler` (Restart Print Spooler)
 - `restart_wuauserv` (Restart Windows Update service)
 
-**Verification:** Simply executing a repair does not mean the system is fixed. The application executes a targeted verification test (e.g., sending an ICMP ping to `8.8.8.8` after an IP renewal). Based on the precise execution state, the application categorizes the repair into:
+**Verification:** Simply executing a repair does not mean the system is fixed. The application executes a targeted verification test (e.g., checking the relevant Windows adapter/service/device state after the repair). Based on the precise execution state, the application categorizes the repair into:
 - `VERIFIED_FIXED`: Execution succeeded, verification test succeeded.
 - `EXECUTED_NOT_FIXED`: Execution succeeded, but the core issue remains (e.g. underlying hardware fault).
 - `VERIFICATION_FAILED`: Execution succeeded, but the validation step itself encountered an error.
@@ -109,7 +109,7 @@ The application features a modern, premium UI organized into the following areas
 
 - **UI:** Streamlit, custom CSS injects
 - **Hardware Telemetry:** `psutil`, `wmi`, `pywin32`, native Windows PowerShell subprocesses (`Get-PnpDevice`, `Get-Service`, etc.)
-- **AI Backend:** `urllib` (zero heavy API dependencies), Python standard `json`
+- **AI Backend:** Local Ollama integration via `urllib`, structured JSON validation, with a deterministic Rule-Based fallback
 - **Testing:** `pytest` 
 
 ---
@@ -146,15 +146,18 @@ The application features a modern, premium UI organized into the following areas
 
 The repository contains a robust testing suite leveraging `unittest.mock` to simulate PowerShell outputs, preventing accidental modifications to your host machine during tests.
 
-Currently, **40 tests** pass successfully, covering:
-- All 16 hardware diagnostic parsers
-- RuleBased engine fallbacks
-- Integration schemas and state clearing
-- The isolated repair engine registry and PS5/PS7 boolean verification compatibility
+Currently, **80 automated tests** pass successfully, covering:
+- All 16 diagnostic modules
+- Deterministic Rule-Based reasoning
+- Ollama/local LLM fallback and response validation
+- Structured diagnostic evidence and reasoning
+- Repair engine behavior and verification states
+- Camera Code 22 detection/verification
+- Streamlit UI rendering regression tests
 
 To run the test suite:
 ```powershell
-python -m pytest tests\
+python -m pytest -q
 ```
 
 ---
