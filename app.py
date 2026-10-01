@@ -1,4 +1,9 @@
 import streamlit as st
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 from ui.components import load_css
 from ui.dashboard import render_dashboard
 from ui.diagnostics import render_diagnostics

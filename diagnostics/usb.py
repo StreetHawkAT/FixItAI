@@ -26,17 +26,22 @@ def parse_json(data):
 def check_usb():
     evidence = []
     
-    usbs = parse_json(run_ps("Get-PnpDevice -Class USB -ErrorAction SilentlyContinue | Select-Object Name, Status, Present | ConvertTo-Json -Compress"))
+    usbs = parse_json(run_ps("Get-PnpDevice -Class USB -ErrorAction SilentlyContinue | Select-Object Name, Status, Present, Problem, ProblemDescription | ConvertTo-Json -Compress"))
     
     usb_error = False
     error_devices = []
     
     for u in usbs:
         status = str(u.get("Status", "")).upper()
+        prob = u.get("Problem")
+        prob_desc = u.get("ProblemDescription")
         if status == "ERROR": 
             usb_error = True
             error_devices.append(u.get('Name'))
-            evidence.append(f"USB Error: {u.get('Name')} | Status: {status}")
+            if prob is not None and prob_desc:
+                evidence.append(f"USB Error: {u.get('Name')} | Status: {status} | PnP Code: {prob} ({prob_desc})")
+            else:
+                evidence.append(f"USB Error: {u.get('Name')} | Status: {status}")
             
     if not usbs:
         evidence.append("No USB controllers/devices detected.")

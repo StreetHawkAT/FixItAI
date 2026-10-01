@@ -89,16 +89,20 @@ def render_diagnostics():
     with st.expander("OFFLINE DEMO MODE (Simulated Diagnostic Data)"):
         st.write("No changes will be made to this computer. Use these to test the AI pipeline.")
         test_scenario = st.selectbox("Select Scenario", [
+            "Camera: Multi-device (ASUS IR OK, FHD Error)",
+            "Camera: Disabled (Code 22)",
+            "Camera: Missing (0 detected)",
+            "Camera: Privacy blocked",
             "Network: Wi-Fi disabled",
             "Network: DHCP failure",
             "Network: Driver error",
             "Audio: Service stopped",
             "Audio: Device missing",
             "Bluetooth: Driver error",
+            "Bluetooth: Service stopped",
             "Display: Monitor not detected",
             "Keyboard: Disabled",
             "Mouse: Missing",
-            "Camera: Driver error",
             "Microphone: Disabled",
             "USB: Device error",
             "Printer: Spooler stopped",
@@ -162,7 +166,64 @@ def inject_demo(scenario):
     st.session_state['last_diagnosis'] = None
     data = {"category": scenario.split(":")[0].lower().replace(" ", "_"), "status": "problem"}
     
-    if "Network" in scenario:
+    if "Camera: Multi-device" in scenario:
+        data = {
+            "category": "camera", "status": "problem",
+            "camera_present": True, "camera_enabled": True,
+            "driver_status": "error", "device_status": "partial_error",
+            "total_cameras": 2, "healthy_cameras": ["ASUS IR camera"],
+            "problem_cameras": ["ASUS FHD webcam"],
+            "devices": [
+                {"Name": "ASUS IR camera", "Status": "OK", "Present": True, "Problem": 0, "ProblemDescription": "This device is working properly."},
+                {"Name": "ASUS FHD webcam", "Status": "Error", "Present": True, "Problem": 10, "ProblemDescription": "This device cannot start. (Code 10)."}
+            ],
+            "frame_server_service": "Running", "privacy_access": "Allow",
+            "evidence": [
+                "Detected 2 camera/imaging device(s).",
+                "Device: ASUS IR camera | Status: OK | PnP Code: 0 (This device is working properly.)",
+                "Device: ASUS FHD webcam | Status: Error | PnP Code: 10 (This device cannot start. (Code 10).)",
+                "Windows Camera Frame Server service: Running",
+                "Windows Camera Privacy setting: Allow"
+            ]
+        }
+    elif "Camera: Disabled" in scenario:
+        data = {
+            "category": "camera", "status": "problem",
+            "camera_present": True, "camera_enabled": False,
+            "driver_status": "ok", "device_status": "disabled",
+            "total_cameras": 1, "disabled_cameras": ["Integrated Camera"],
+            "devices": [
+                {"Name": "Integrated Camera", "Status": "Error", "Present": True, "Problem": 22, "ProblemDescription": "This device is disabled. (Code 22)."}
+            ],
+            "frame_server_service": "Running", "privacy_access": "Allow",
+            "evidence": [
+                "Detected 1 camera/imaging device(s).",
+                "Device: Integrated Camera | Status: Error | PnP Code: 22 (This device is disabled. (Code 22).)",
+                "Windows Camera Frame Server service: Running",
+                "Windows Camera Privacy setting: Allow"
+            ]
+        }
+    elif "Camera: Missing" in scenario:
+        data = {
+            "category": "camera", "status": "problem",
+            "camera_present": False, "total_cameras": 0, "devices": [],
+            "evidence": ["No camera device was detected by Windows."]
+        }
+    elif "Camera: Privacy blocked" in scenario:
+        data = {
+            "category": "camera", "status": "problem",
+            "camera_present": True, "camera_enabled": True,
+            "privacy_access": "Deny", "frame_server_service": "Running",
+            "devices": [
+                {"Name": "Integrated Camera", "Status": "OK", "Present": True, "Problem": 0, "ProblemDescription": "This device is working properly."}
+            ],
+            "evidence": [
+                "Detected 1 camera/imaging device(s).",
+                "Device: Integrated Camera | Status: OK",
+                "Windows Camera Privacy setting: Deny"
+            ]
+        }
+    elif "Network" in scenario:
         data = {
             "category": "network", "status": "problem", "internet_connected": False,
             "wifi_present": True, "wifi_enabled": True, "ethernet_present": False,
@@ -177,11 +238,11 @@ def inject_demo(scenario):
     elif "Bluetooth" in scenario:
         data["category"] = "bluetooth"
         data["evidence"] = ["Bluetooth error simulated."]
-        data["driver_status"] = "error"
-    elif "Camera" in scenario:
-        data["category"] = "camera"
-        data["evidence"] = ["Camera missing simulated."]
-        data["camera_present"] = False
+        if "Service stopped" in scenario:
+            data["service_running"] = False
+            data["driver_status"] = "ok"
+        else:
+            data["driver_status"] = "error"
     else:
         data["evidence"] = [f"Simulated offline issue for {scenario}"]
         

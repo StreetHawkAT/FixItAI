@@ -26,15 +26,20 @@ def parse_json(data):
 def check_keyboard():
     evidence = []
     
-    keyboards = parse_json(run_ps("Get-PnpDevice -Class Keyboard -ErrorAction SilentlyContinue | Select-Object Name, Status, Present | ConvertTo-Json -Compress"))
+    keyboards = parse_json(run_ps("Get-PnpDevice -Class Keyboard -ErrorAction SilentlyContinue | Select-Object Name, Status, Present, Problem, ProblemDescription | ConvertTo-Json -Compress"))
     
     kb_error = False
     kb_present = len(keyboards) > 0
     
     for k in keyboards:
         status = str(k.get("Status", "")).upper()
+        prob = k.get("Problem")
+        prob_desc = k.get("ProblemDescription")
         if status == "ERROR": kb_error = True
-        evidence.append(f"Keyboard: {k.get('Name')} | Status: {status}")
+        if prob is not None and prob != 0 and prob_desc:
+            evidence.append(f"Keyboard: {k.get('Name')} | Status: {status} | PnP Code: {prob} ({prob_desc})")
+        else:
+            evidence.append(f"Keyboard: {k.get('Name')} | Status: {status}")
         
     status = "healthy"
     if kb_error or not kb_present:

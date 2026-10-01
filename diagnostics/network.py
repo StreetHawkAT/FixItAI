@@ -34,11 +34,33 @@ def check_network():
 
     ipconfig = run_ps("ipconfig")
 
+    evidence = []
+    if internet_connected:
+        evidence.append("Internet connectivity verified (ping 8.8.8.8 succeeded).")
+    else:
+        evidence.append("Internet gateway ping test failed (8.8.8.8 unreachable).")
+
+    if wifi_present:
+        evidence.append(f"Wi-Fi adapter detected: Status {'Up' if wifi_enabled else 'Disabled/Down'}")
+    else:
+        evidence.append("Wi-Fi adapter not detected.")
+
+    if ethernet_present:
+        evidence.append("Ethernet adapter detected.")
+
+    if wlan_svc:
+        evidence.append(f"WLAN AutoConfig service (WlanSvc): {wlan_svc}")
+
+    dhcp_failed = "169.254." in ipconfig
+    if dhcp_failed:
+        evidence.append("APIPA autoconfiguration IPv4 address (169.254.x.x) detected - DHCP lease failed.")
+
     # Try to find driver errors from PNP devices
     pnp_errors = run_ps("Get-PnpDevice -Class Net -Status Error | Select-Object FriendlyName, Status | ConvertTo-Json -Compress")
     driver_status = "ok"
     if pnp_errors and len(pnp_errors) > 5:
         driver_status = "error"
+        evidence.append("Network adapter driver reporting PnP error.")
 
     status = "healthy" if (wifi_present and wifi_enabled and internet_connected) else "problem"
     if driver_status == "error":
@@ -53,6 +75,8 @@ def check_network():
         "ethernet_present": ethernet_present,
         "driver_status": driver_status,
         "wlan_service": wlan_svc,
+        "dhcp_failed": dhcp_failed,
         "adapters": adapters,
+        "evidence": evidence,
         "ipconfig": ipconfig[:200] + "..." if len(ipconfig) > 200 else ipconfig
     }

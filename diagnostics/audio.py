@@ -31,7 +31,7 @@ def check_audio():
     audioendpoint = run_ps("(Get-Service -Name AudioEndpointBuilder -ErrorAction SilentlyContinue).Status")
     
     # Check audio devices
-    devices = parse_json(run_ps("Get-PnpDevice -Class Media -ErrorAction SilentlyContinue | Select-Object Name, Status, Present | ConvertTo-Json -Compress"))
+    devices = parse_json(run_ps("Get-PnpDevice -Class Media -ErrorAction SilentlyContinue | Select-Object Name, Status, Present, Problem, ProblemDescription | ConvertTo-Json -Compress"))
     
     if audiosrv.lower() != "running":
         evidence.append("Windows Audio Service (AudioSrv) is stopped.")
@@ -44,9 +44,15 @@ def check_audio():
     
     for d in devices:
         status = str(d.get("Status", "")).upper()
+        prob = d.get("Problem")
+        prob_desc = d.get("ProblemDescription")
         if status == "ERROR": device_error = True
         elif status == "OK": device_enabled = True
-        evidence.append(f"Device: {d.get('Name')} | Status: {status}")
+        
+        if prob is not None and prob != 0 and prob_desc:
+            evidence.append(f"Device: {d.get('Name')} | Status: {status} | PnP Code: {prob} ({prob_desc})")
+        else:
+            evidence.append(f"Device: {d.get('Name')} | Status: {status}")
         
     if not device_present:
         evidence.append("No audio media devices detected.")

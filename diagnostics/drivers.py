@@ -26,14 +26,19 @@ def parse_json(data):
 def check_drivers():
     evidence = []
     
-    errors = parse_json(run_ps("Get-PnpDevice -Status Error -ErrorAction SilentlyContinue | Select-Object Class, Name, Status | ConvertTo-Json -Compress"))
+    errors = parse_json(run_ps("Get-PnpDevice -Status Error -ErrorAction SilentlyContinue | Select-Object Class, Name, Status, Problem, ProblemDescription | ConvertTo-Json -Compress"))
     
     driver_error = len(errors) > 0
     
     if driver_error:
-        evidence.append(f"Detected {len(errors)} devices with driver errors.")
+        evidence.append(f"Detected {len(errors)} device(s) reporting PnP / driver errors.")
         for e in errors:
-            evidence.append(f"[{e.get('Class')}] {e.get('Name')}")
+            prob = e.get('Problem')
+            prob_desc = e.get('ProblemDescription')
+            if prob is not None and prob_desc:
+                evidence.append(f"[{e.get('Class')}] {e.get('Name')} | Code {prob} ({prob_desc})")
+            else:
+                evidence.append(f"[{e.get('Class')}] {e.get('Name')}")
     else:
         evidence.append("No devices reporting driver errors.")
         
